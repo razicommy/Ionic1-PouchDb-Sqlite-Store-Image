@@ -93,7 +93,7 @@
     <script src="lib/pouch/pouchdb-6.1.2.js"></script>
     <script src="lib/pouch/pouchdb.cordova-sqlite-2.0.2.js"></script>
 
- <script>
+  <script>
     /*create js object app, bind to html app, use ionic framework*/
     var app = angular.module('app', ['ionic']);
     /******************************/
@@ -114,9 +114,7 @@
       function initDB() {
         // Creates the database or opens if it already exists
         _db = new PouchDB('birthdays', {
-          adapter: 'cordova-sqlite',
-            iosDatabaseLocation: 'Library',
-  androidDatabaseImplementation: 2
+          adapter: 'websql'
         });
       };
 
@@ -195,7 +193,8 @@
     }) /*-DataFactory*/
     /*define app.controller methods*/
     app.controller('homeCtrl', function($scope, $state, $ionicPlatform, $ionicModal, DataFactory) {
- $scope.imgBlank="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg=="
+      
+      $scope.imgBlank="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg=="
       $scope.blob1 = $scope.imgBlank;
       $scope.showBlob1 = false;
       // Initialize the database.
@@ -214,7 +213,7 @@
       })
       $scope.showAddBirthdayModal = function() {
         $scope.birthday = {};
-         $scope.birthday.photo=$scope.imgBlank;
+         $scope.birthday.photo= $scope.imgBlank;
         //console.log($scope.birthday);
         $scope.action = 'Add';
         $scope.isAdd = true;
@@ -230,7 +229,7 @@
       };
       $scope.closeModal = function() {
         $scope.birthday = {};
-        $scope.blob1 = $scope.imgBlank;
+        $scope.blob1 =  $scope.imgBlank;
         $scope.showBlob1 = false;
         $scope.modal.hide();
       }
