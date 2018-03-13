@@ -74,24 +74,26 @@
   </div>
 
   <script id="templates/home.html" type="text/ng-template">
-    <ion-view title="Home" id="page0">
+     <ion-view title="Home" id="page0">
       <ion-nav-buttons side="right" class="has-header">
         <button class="button button-icon icon ion-plus-circled" ng-click="showAddBirthdayModal()"></button>
       </ion-nav-buttons>
       <ion-content padding="true" class="has-header">
-      <ion-list>
-        <ion-item ng-repeat="b in birthdays" ng-click="vm.showEditBirthdayModal(b)">
-          <div style="float: left">{{ b.Name }}</div>
-          <div style="float: right">{{ b.Date | date:"dd MMMM yyyy" }}</div>
-        </ion-item>
-      </ion-list>
+        <ion-list>
+          <ion-item ng-repeat="b in birthdays track by $index" ng-click="showEditBirthdayModal(b)">
+            <div style="float:left"><img src="{{ b.photo }}" /></div>
+            <div style="float: left">{{ b.Name }}</div>
+            <div style="float: right">{{ b.Date | date:"dd MMMM yyyy" }}</div>
+
+          </ion-item>
+        </ion-list>
       </ion-content>
     </ion-view>
   </script>
     <script src="lib/pouch/pouchdb-6.1.2.js"></script>
     <script src="lib/pouch/pouchdb.cordova-sqlite-2.0.2.js"></script>
 
-  <script>
+ <script>
     /*create js object app, bind to html app, use ionic framework*/
     var app = angular.module('app', ['ionic']);
     /******************************/
@@ -106,21 +108,21 @@
         getAllBirthdays: getAllBirthdays,
         addBirthday: addBirthday,
         updateBirthday: updateBirthday,
-        deleteBirthday: deleteBirthday
+        deleteBirthday: deleteBirthday,
+        getAttachment: getAttachment
       }; /*return*/
       function initDB() {
         // Creates the database or opens if it already exists
         _db = new PouchDB('birthdays', {
-          adapter: 'cordova-sqlite',
-            iosDatabaseLocation: 'Library',
-  androidDatabaseImplementation: 2
+          adapter: 'websql'
         });
       };
 
       function getAllBirthdays() {
         if (!_birthdays) {
           return $q.when(_db.allDocs({
-              include_docs: true
+              include_docs: true,
+              attachments: false
             }))
             .then(function(docs) {
               // Each row has a .doc object and we just want to send an 
@@ -157,101 +159,161 @@
       function deleteBirthday(birthday) {
         return $q.when(_db.remove(birthday));
       };
-      
-      
-function onDatabaseChange(change) {  
-    var index = findIndex(_birthdays, change.id);
-    var birthday = _birthdays[index];
 
-    if (change.deleted) {
-        if (birthday) {
+      function getAttachment(birthday) {
+        return $q.when(_db.getAttachment(birthday._id, 'image'));
+      };
+
+      function onDatabaseChange(change) {
+        var index = findIndex(_birthdays, change.id);
+        var birthday = _birthdays[index];
+        if (change.deleted) {
+          if (birthday) {
             _birthdays.splice(index, 1); // delete
-        }
-    } else {
-        if (birthday && birthday._id === change.id) {
-            _birthdays[index] = change.doc; // update
+          }
         } else {
+          if (birthday && birthday._id === change.id) {
+            _birthdays[index] = change.doc; // update
+          } else {
             _birthdays.splice(index, 0, change.doc) // insert
+          }
         }
-    }
-}
-
-// Binary search, the array is by default sorted by _id.
-function findIndex(array, id) {  
-    var low = 0, high = array.length, mid;
-    while (low < high) {
-    mid = (low + high) >>> 1;
-    array[mid]._id < id ? low = mid + 1 : high = mid
-    }
-    return low;
-}      
-      
-      
+      }
+      // Binary search, the array is by default sorted by _id.
+      function findIndex(array, id) {
+        var low = 0,
+          high = array.length,
+          mid;
+        while (low < high) {
+          mid = (low + high) >>> 1;
+          array[mid]._id < id ? low = mid + 1 : high = mid
+        }
+        return low;
+      }
     }) /*-DataFactory*/
-    
-    
-    
-    
     /*define app.controller methods*/
-    app.controller('homeCtrl', function($scope, $state, $ionicPlatform,$ionicModal, DataFactory) {
-    // Initialize the database.
-    $ionicPlatform.ready(function() {
+    app.controller('homeCtrl', function($scope, $state, $ionicPlatform, $ionicModal, DataFactory) {
+      $scope.blob1 = "0";
+      $scope.showBlob1 = false;
+      // Initialize the database.
+      $ionicPlatform.ready(function() {
         DataFactory.initDB();
-
         // Get all birthday records from the database.
         DataFactory.getAllBirthdays().then(function(birthdays) {
-            $scope.birthdays = birthdays;
+          $scope.birthdays = birthdays;
+          //console.log($scope.birthdays)
         });
-    });      
-    
-          // Initialize the modal view.
-   $scope.modal = $ionicModal.fromTemplate('<ion-modal-view> <ion-header-bar><h1 class="title">{{ action }} Birthday</h1><div class="buttons"> <button ng-hide="isAdd" ng-click="deleteBirthday()" class="button button-icon icon ion-trash-a"></button></div> </ion-header-bar> <ion-content><div class="list list-inset"> <label class="item item-input"> <input type="text" placeholder="Name" ng-model="birthday.Name"> </label> <label class="item item-input"> <input type="date" placeholder="Birthday" ng-model="birthday.Date"> </label></div><div class="padding"> <button ng-click="saveBirthday()" class="button button-block button-positive activated">Save</button></div> </ion-content> </ion-modal-view>'
-                                           , {
-      scope: $scope,
-      animation: 'slide-in-up'
-   })
-
-      
-      
-      
-    $scope.showAddBirthdayModal = function() {
+      });
+      // Initialize the modal view.
+      $scope.modal = $ionicModal.fromTemplate('<ion-modal-view> <ion-header-bar><h1 class="title">{{ action }} Birthday</h1><div class="buttons"> <button ng-hide="" ng-click="closeModal()" class="button button-icon icon ion-close"></button></div> </ion-header-bar> <ion-content><div class="list list-inset"> <label class="item item-input"> <input type="text" placeholder="Name" ng-model="birthday.Name"> </label> <label class="item item-input"> <input type="date" placeholder="Birthday" ng-model="birthday.Date"> </label></div><label class="import-file"><button class="button button-block button-calm" ng-click="triggerInputFile()">Choose File</button><input type="file" class="inputFile" style="display:none;" accept="image/*"       onchange="angular.element(this).scope().inputFileChanged(this)"><div>Preview...</div></label><center><img ng-src="{{birthday.photo}}" class="thumbimage" alt="Image" width="100" ng-click="toggleGetAttachment()" /></center><div class="padding"> <button ng-click="saveBirthday()" class="button button-block button-positive activated">Save</button> <button ng-click="deleteBirthday()" class="button button-block button-assertive">Delete</button><img ng-src="{{blob1}}" ng-show="showBlob1"/></div> </ion-content> </ion-modal-view>', {
+        scope: $scope,
+        animation: 'slide-in-up'
+      })
+      $scope.showAddBirthdayModal = function() {
         $scope.birthday = {};
+         $scope.birthday.photo="0";
+        //console.log($scope.birthday);
         $scope.action = 'Add';
         $scope.isAdd = true;
-        $scope.modal.show();           
-    };
-
-    $scope.showEditBirthdayModal = function(birthday) {
-        $scope.birthday = birthday;
-        $scope.action = 'Edit';
-        $scope.isAdd = false;          
         $scope.modal.show();
-    };
-
-    $scope.saveBirthday = function() {
+      };
+      $scope.showEditBirthdayModal = function(birthday) {
+        $scope.birthday = birthday;
+        $scope.birthday.Date = new Date($scope.birthday.Date);
+        //console.log($scope.birthday);
+        $scope.action = 'Edit';
+        $scope.isAdd = false;
+        $scope.modal.show();
+      };
+      $scope.closeModal = function() {
+        $scope.birthday = {};
+        $scope.blob1 = "0";
+        $scope.showBlob1 = false;
+        $scope.modal.hide();
+      }
+      $scope.saveBirthday = function() {
         if ($scope.isAdd) {
-            DataFactory.addBirthday($scope.birthday);              
+          DataFactory.addBirthday($scope.birthday);
         } else {
-            DataFactory.updateBirthday($scope.birthday);               
-        }                       
+          DataFactory.updateBirthday($scope.birthday);
+        }
         $scope.modal.hide();
-    };
-
-    $scope.deleteBirthday = function() {
-        DataFactory.deleteBirthday($scope.birthday);           
+      };
+      $scope.deleteBirthday = function() {
+        DataFactory.deleteBirthday($scope.birthday);
         $scope.modal.hide();
-    };
-
-    $scope.$on('$destroy', function() {
-        $scope.modal.remove(); 
-    });
-      
+      };
+      $scope.$on('$destroy', function() {
+        $scope.modal.remove();
+      });
+      $scope.toggleGetAttachment = function() {
+        if ($scope.blob1 == "0") {
+          DataFactory.getAttachment($scope.birthday).then(function(blob1) {
+            $scope.showBlob1 = true;
+            $scope.blob1 = URL.createObjectURL(blob1);
+          })
+        } else {
+          $scope.showBlob1 = false;
+          $scope.blob1 = "0"
+        }
+      }
+      /*Fetching File Names Begin*/
+      $scope.resetInputFile = function() {
+        //do something
+      }
+      $scope.triggerInputFile = function() {
+        document.getElementsByClassName('inputFile')[0].click()
+      }
+      $scope.inputFileChanged = function(ele) {
+        var file = ele.files[0];
+        $scope.singlefile = {}
+        var fileReader = new FileReader();
+        fileReader.onload = function(fileLoadedEvent) {
+          var canvas = document.createElement("canvas");
+          canvas.height = 100;
+          canvas.width = 100;
+          var context = canvas.getContext('2d');
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          var tempImage = new Image;
+          tempImage.onload = function() {
+            var w = tempImage.width
+            var h = tempImage.height
+            if (w >= h) {
+              var newW1 = parseFloat(w / 2) - parseFloat(h / 2)
+              var newW2 = h
+              var newH1 = 0
+              var newH2 = h
+            } else {
+              var newW1 = 0
+              var newW2 = w
+              var newH1 = parseFloat(h / 2) - parseFloat(w / 2)
+              var newH2 = w
+            }
+            context.drawImage(
+              tempImage,
+              newW1, newH1,
+              newW2, newH2,
+              0, 0,
+              canvas.width, canvas.height);
+            $scope.birthday.photo = canvas.toDataURL();
+            //console.log($scope.birthday.photo)
+            $scope.$apply();
+          };
+          tempImage.src = fileLoadedEvent.target.result;
+          $scope.birthday._attachments = {
+            'image': {
+              content_type: file.type,
+              data: file
+            }
+          }
+          //time consuming
+          //$scope.blob1 = URL.createObjectURL(file);
+          $scope.$apply();
+          console.log($scope.birthday)
+        };
+        fileReader.readAsDataURL(file);
+      }
     }); /*homeCtrl*/
-    
-    
-    
-    
-    
     /*define app.config methods*/
     app.config(function($stateProvider, $urlRouterProvider) {
       $stateProvider.state('home', {
