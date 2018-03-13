@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Ionic PouchDb WebSql</title>
+</head>
+<body>
+  <html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no,width=device-width">
+  <title></title>
+  <!--local lib-->
+  <script src="lib/ionic/js/ionic.bundle.js"></script>
+
+  <!--cloud lib-->
+  <!--<script src="http://code.ionicframework.com/1.3.2/js/ionic.bundle.js"></script>-->
+  <!-- cordova script (this will be a 404 during development) -->
+  <script src="cordova.js"></script>
+ 
+  <!-- IF using Sass (run gulp sass first), then uncomment below and remove the CSS includes above-->
+  <!--<link href="css/ionic.app.css" rel="stylesheet">-->
+  <!--local lib-->
+  <link href="lib/ionic/css/ionic.css" rel="stylesheet">
+  <!--cloud lib-->
+  <!--<link href="http://code.ionicframework.com/1.3.2/css/ionic.css" rel="stylesheet">-->
+  <!--ionic custom styling-->
+  <style>
+    .platform-ios .manual-ios-statusbar-padding {
+      padding-top: 20px
+    }
+
+    .manual-remove-top-padding {
+      padding-top: 0
+    }
+
+    .manual-remove-top-padding .scroll {
+      padding-top: 0 !important
+    }
+
+    .list.card.manual-card-fullwidth,
+    ion-list.manual-list-fullwidth div.list {
+      margin-left: -10px;
+      margin-right: -10px
+    }
+
+    .list.card.manual-card-fullwidth>.item,
+    ion-list.manual-list-fullwidth div.list>.item {
+      border-radius: 0;
+      border-left: 0;
+      border-right: 0
+    }
+
+    .show-list-numbers-and-dots ul {
+      list-style-type: disc;
+      padding-left: 40px
+    }
+
+    .show-list-numbers-and-dots ol {
+      list-style-type: decimal;
+      padding-left: 40px
+    }
+  </style>
+</head>
+
+<body ng-app="app" animation="slide-left-right-ios7">
+  <div>
+    <div>
+      <ion-nav-bar class="bar-stable">
+        <!--<ion-nav-back-button></ion-nav-back-button>-->
+      </ion-nav-bar>
+      <ion-nav-view></ion-nav-view>
+    </div>
+  </div>
+
+  <script id="templates/home.html" type="text/ng-template">
+    <ion-view title="Home" id="page0">
+      <ion-nav-buttons side="right" class="has-header">
+        <button class="button button-icon icon ion-plus-circled" ng-click="showAddBirthdayModal()"></button>
+      </ion-nav-buttons>
+      <ion-content padding="true" class="has-header">
+      <ion-list>
+        <ion-item ng-repeat="b in birthdays" ng-click="vm.showEditBirthdayModal(b)">
+          <div style="float: left">{{ b.Name }}</div>
+          <div style="float: right">{{ b.Date | date:"dd MMMM yyyy" }}</div>
+        </ion-item>
+      </ion-list>
+      </ion-content>
+    </ion-view>
+  </script>
+    <script src="lib/pouch/pouchdb-6.1.2.js"></script>
+    <script src="lib/pouch/pouchdb.cordova-sqlite-2.0.2.js"></script>
+
+  <script>
+    /*create js object app, bind to html app, use ionic framework*/
+    var app = angular.module('app', ['ionic']);
+    /******************************/
+    /*define CONTROLLERS & CONFIGS*/
+    /******************************/
+    app.factory('DataFactory', function($q) {
+      var _db;
+      // We'll need this later.
+      var _birthdays;
+      return {
+        initDB: initDB,
+        getAllBirthdays: getAllBirthdays,
+        addBirthday: addBirthday,
+        updateBirthday: updateBirthday,
+        deleteBirthday: deleteBirthday
+      }; /*return*/
+      function initDB() {
+        // Creates the database or opens if it already exists
+        _db = new PouchDB('birthdays', {
+          adapter: 'cordova-sqlite',
+            iosDatabaseLocation: 'Library',
+  androidDatabaseImplementation: 2
+        });
+      };
+
+      function getAllBirthdays() {
+        if (!_birthdays) {
+          return $q.when(_db.allDocs({
+              include_docs: true
+            }))
+            .then(function(docs) {
+              // Each row has a .doc object and we just want to send an 
+              // array of birthday objects back to the calling controller,
+              // so let's map the array to contain just the .doc objects.
+              _birthdays = docs.rows.map(function(row) {
+                // Dates are not automatically converted from a string.
+                row.doc.Date = new Date(row.doc.Date);
+                return row.doc;
+              });
+              // Listen for changes on the database.
+              _db.changes({
+                  live: true,
+                  since: 'now',
+                  include_docs: true
+                })
+                .on('change', onDatabaseChange);
+              return _birthdays;
+            });
+        } else {
+          // Return cached data as a promise
+          return $q.when(_birthdays);
+        }
+      };
+
+      function addBirthday(birthday) {
+        return $q.when(_db.post(birthday));
+      };
+
+      function updateBirthday(birthday) {
+        return $q.when(_db.put(birthday));
+      };
+
+      function deleteBirthday(birthday) {
+        return $q.when(_db.remove(birthday));
+      };
+      
+      
+function onDatabaseChange(change) {  
+    var index = findIndex(_birthdays, change.id);
+    var birthday = _birthdays[index];
+
+    if (change.deleted) {
+        if (birthday) {
+            _birthdays.splice(index, 1); // delete
+        }
+    } else {
+        if (birthday && birthday._id === change.id) {
+            _birthdays[index] = change.doc; // update
+        } else {
+            _birthdays.splice(index, 0, change.doc) // insert
+        }
+    }
+}
+
+// Binary search, the array is by default sorted by _id.
+function findIndex(array, id) {  
+    var low = 0, high = array.length, mid;
+    while (low < high) {
+    mid = (low + high) >>> 1;
+    array[mid]._id < id ? low = mid + 1 : high = mid
+    }
+    return low;
+}      
+      
+      
+    }) /*-DataFactory*/
+    
+    
+    
+    
+    /*define app.controller methods*/
+    app.controller('homeCtrl', function($scope, $state, $ionicPlatform,$ionicModal, DataFactory) {
+    // Initialize the database.
+    $ionicPlatform.ready(function() {
+        DataFactory.initDB();
+
+        // Get all birthday records from the database.
+        DataFactory.getAllBirthdays().then(function(birthdays) {
+            $scope.birthdays = birthdays;
+        });
+    });      
+    
+          // Initialize the modal view.
+   $scope.modal = $ionicModal.fromTemplate('<ion-modal-view> <ion-header-bar><h1 class="title">{{ action }} Birthday</h1><div class="buttons"> <button ng-hide="isAdd" ng-click="deleteBirthday()" class="button button-icon icon ion-trash-a"></button></div> </ion-header-bar> <ion-content><div class="list list-inset"> <label class="item item-input"> <input type="text" placeholder="Name" ng-model="birthday.Name"> </label> <label class="item item-input"> <input type="date" placeholder="Birthday" ng-model="birthday.Date"> </label></div><div class="padding"> <button ng-click="saveBirthday()" class="button button-block button-positive activated">Save</button></div> </ion-content> </ion-modal-view>'
+                                           , {
+      scope: $scope,
+      animation: 'slide-in-up'
+   })
+
+      
+      
+      
+    $scope.showAddBirthdayModal = function() {
+        $scope.birthday = {};
+        $scope.action = 'Add';
+        $scope.isAdd = true;
+        $scope.modal.show();           
+    };
+
+    $scope.showEditBirthdayModal = function(birthday) {
+        $scope.birthday = birthday;
+        $scope.action = 'Edit';
+        $scope.isAdd = false;          
+        $scope.modal.show();
+    };
+
+    $scope.saveBirthday = function() {
+        if ($scope.isAdd) {
+            DataFactory.addBirthday($scope.birthday);              
+        } else {
+            DataFactory.updateBirthday($scope.birthday);               
+        }                       
+        $scope.modal.hide();
+    };
+
+    $scope.deleteBirthday = function() {
+        DataFactory.deleteBirthday($scope.birthday);           
+        $scope.modal.hide();
+    };
+
+    $scope.$on('$destroy', function() {
+        $scope.modal.remove(); 
+    });
+      
+    }); /*homeCtrl*/
+    
+    
+    
+    
+    
+    /*define app.config methods*/
+    app.config(function($stateProvider, $urlRouterProvider) {
+      $stateProvider.state('home', {
+        url: '/page0',
+        templateUrl: 'templates/home.html',
+        controller: 'homeCtrl'
+      });
+      $urlRouterProvider.otherwise('/page0');
+    });
+    /*************************/
+    /*define SYSTEM SETTINGS */
+    /*************************/
+    app.config(function($ionicConfigProvider, $sceDelegateProvider) {
+      $sceDelegateProvider.resourceUrlWhitelist(['self', '*://www.youtube.com/**', '*://player.vimeo.com/video/**']);
+    })
+    app.run(function($ionicPlatform) {
+      $ionicPlatform.ready(function() {
+        // Hide the accessory bar by default (remove this to show the accessory bar above the keyboard
+        // for form inputs)
+        if (window.cordova && window.cordova.plugins && window.cordova.plugins.Keyboard) {
+          cordova.plugins.Keyboard.hideKeyboardAccessoryBar(true);
+          cordova.plugins.Keyboard.disableScroll(true);
+        }
+        if (window.StatusBar) {
+          // org.apache.cordova.statusbar required
+          StatusBar.styleDefault();
+        }
+      });
+    });
+    /*
+      This directive is used to disable the "drag to open" functionality of the Side-Menu
+      when you are dragging a Slider component.
+    */
+    app.directive('disableSideMenuDrag', ['$ionicSideMenuDelegate', '$rootScope', function($ionicSideMenuDelegate, $rootScope) {
+      return {
+        restrict: "A",
+        controller: ['$scope', '$element', '$attrs', function($scope, $element, $attrs) {
+          function stopDrag() {
+            $ionicSideMenuDelegate.canDragContent(false);
+          }
+
+          function allowDrag() {
+            $ionicSideMenuDelegate.canDragContent(true);
+          }
+          $rootScope.$on('$ionicSlides.slideChangeEnd', allowDrag);
+          $element.on('touchstart', stopDrag);
+          $element.on('touchend', allowDrag);
+          $element.on('mousedown', stopDrag);
+          $element.on('mouseup', allowDrag);
+        }]
+      };
+    }]);
+    /*
+      This directive is used to open regular and dynamic href links inside of inappbrowser.
+    */
+    app.directive('hrefInappbrowser', function() {
+      return {
+        restrict: 'A',
+        replace: false,
+        transclude: false,
+        link: function(scope, element, attrs) {
+          var href = attrs['hrefInappbrowser'];
+          attrs.$observe('hrefInappbrowser', function(val) {
+            href = val;
+          });
+          element.bind('click', function(event) {
+            window.open(href, '_system', 'location=yes');
+            event.preventDefault();
+            event.stopPropagation();
+          });
+        }
+      };
+    });
+  </script>
+
+</body>
+
+</html>
