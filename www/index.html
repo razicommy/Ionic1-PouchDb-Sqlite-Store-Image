@@ -214,7 +214,7 @@
       })
       $scope.showAddBirthdayModal = function() {
         $scope.birthday = {};
-         $scope.birthday.photo="0";
+         $scope.birthday.photo=$scope.imgBlank;
         //console.log($scope.birthday);
         $scope.action = 'Add';
         $scope.isAdd = true;
@@ -250,7 +250,7 @@
         $scope.modal.remove();
       });
       $scope.toggleGetAttachment = function() {
-        if ($scope.blob1 == $scope.imgBlank;) {
+        if ($scope.blob1 == $scope.imgBlank) {
           DataFactory.getAttachment($scope.birthday).then(function(blob1) {
             $scope.showBlob1 = true;
             $scope.blob1 = URL.createObjectURL(blob1);
