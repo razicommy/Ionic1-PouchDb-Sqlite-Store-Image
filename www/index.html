@@ -267,6 +267,7 @@
         document.getElementsByClassName('inputFile')[0].click()
       }
       $scope.inputFileChanged = function(ele) {
+        console.log(1)
         var file = ele.files[0];
         $scope.singlefile = {}
         var fileReader = new FileReader();
@@ -300,6 +301,7 @@
             $scope.birthday.photo = canvas.toDataURL();
             //console.log($scope.birthday.photo)
             $scope.$apply();
+            console.log(2)
           };
           tempImage.src = fileLoadedEvent.target.result;
           $scope.birthday._attachments = {
@@ -308,12 +310,14 @@
               data: file
             }
           }
+          console.log(3)
           //time consuming
           //$scope.blob1 = URL.createObjectURL(file);
           $scope.$apply();
           console.log($scope.birthday)
         };
         fileReader.readAsDataURL(file);
+        console.log(4)
       }
     }); /*homeCtrl*/
     /*define app.config methods*/
