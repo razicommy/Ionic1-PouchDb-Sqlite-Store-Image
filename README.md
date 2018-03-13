@@ -1,0 +1,1 @@
+# Ionic1-PouchDb-Sqlite-Store-Image
